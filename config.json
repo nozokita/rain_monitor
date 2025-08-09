@@ -1,0 +1,20 @@
+{
+  "location": {
+    "name": "三島駅",
+    "lat": 35.126474871810345,
+    "lon": 138.91109391000256
+  },
+  "monitoring": {
+    "enabled": false,
+    "interval_minutes": 3
+  },
+  "thresholds": {
+    "heavy_rain": 30,
+    "torrential_rain": 50
+  },
+  "notification": {
+    "email_to": "",
+    "enabled": true
+  },
+  "debug": true
+}
