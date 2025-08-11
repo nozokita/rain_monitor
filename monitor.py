@@ -219,6 +219,17 @@ def send_email(to_addr, subject, body):
     log_message("メール送信スキップ（非Windows環境）")
     return False
 
+def parse_email_list(raw: Optional[str]) -> list:
+    """カンマ/セミコロン/空白区切りで複数メールを配列化"""
+    if not raw:
+        return []
+    try:
+        import re
+        parts = re.split(r"[\s,;]+", str(raw))
+        return [p.strip() for p in parts if p and "@" in p]
+    except Exception:
+        return [raw]
+
 # ───────────────────────────────────────────
 class JMANowcastAPI:
     """PNG タイルから降水強度を取得（αと色で判定／デバッグ機能付き）"""
@@ -533,11 +544,13 @@ def maybe_send_heartbeat(cfg):
         locations = cfg.get("locations", [])
         if not locations and cfg.get("location"):
             if cfg.get("notification", {}).get("enabled") and cfg.get("notification", {}).get("email_to"):
-                recipients.add(cfg["notification"]["email_to"])
+                for addr in parse_email_list(cfg["notification"]["email_to"]):
+                    recipients.add(addr)
         else:
             for loc in locations:
                 if loc.get("notification_enabled") and loc.get("email_to"):
-                    recipients.add(loc["email_to"])
+                    for addr in parse_email_list(loc["email_to"]):
+                        recipients.add(addr)
 
         if not recipients:
             return
@@ -694,8 +707,12 @@ def check_and_notify():
                     f"確認時刻: {datetime.now():%Y/%m/%d %H:%M}\n\n"
                     "データソース: 気象庁 高解像度降水ナウキャスト"
                 )
-                send_email(email_to, subj, body)
-                log_message(f"[{loc_name}] {level}検知 → {email_to} に通知送信")
+                sent_to = []
+                for addr in parse_email_list(email_to):
+                    send_email(addr, subj, body)
+                    sent_to.append(addr)
+                if sent_to:
+                    log_message(f"[{loc_name}] {level}検知 → {', '.join(sent_to)} に通知送信")
             else:
                 log_message(f"[{loc_name}] {level}検知（通知設定なし: enabled={notification_enabled}, email='{email_to}'）")
 

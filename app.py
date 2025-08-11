@@ -354,7 +354,12 @@ with tab2:
             # 通知設定（地点個別）
             st.markdown("**通知設定**")
             notif_col1, notif_col2 = st.columns(2)
-            new_email = notif_col1.text_input("メールアドレス", value=loc.get("email_to", ""), key=f"email_{idx}")
+            new_email = notif_col1.text_input(
+                "メールアドレス",
+                value=loc.get("email_to", ""),
+                help="複数可：カンマ(,)/セミコロン(;) / 空白で区切ってください。例) a@example.com,b@example.com",
+                key=f"email_{idx}"
+            )
             new_enabled = notif_col2.checkbox("通知有効", value=loc.get("notification_enabled", True), key=f"notif_{idx}")
             
             # 値が変更されたら cfg に反映
@@ -399,7 +404,11 @@ with tab2:
     cfg["heartbeat"]["enabled"] = col_hb[0].checkbox("死活監視を有効化", value=cfg["heartbeat"].get("enabled", True))
     
     # 時刻入力（文字列で）
-    times_str = col_hb[1].text_input("通知時刻 (HH:MM,HH:MM)", value=",".join(cfg["heartbeat"].get("times", ["09:00", "17:00"])))
+    times_str = col_hb[1].text_input(
+        "通知時刻 (HH:MM,HH:MM)",
+        value=",".join(cfg["heartbeat"].get("times", ["09:00", "17:00"])),
+        help="複数可：カンマ区切り。例) 09:00,17:00"
+    )
     try:
         times_list = [t.strip() for t in times_str.split(",") if t.strip()]
         cfg["heartbeat"]["times"] = times_list
