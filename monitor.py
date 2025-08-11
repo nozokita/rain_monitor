@@ -113,6 +113,7 @@ def load_config():
             "thresholds": {"heavy_rain": 30, "torrential_rain": 50},
             "notification": {"email_to": "", "enabled": True},
             "heartbeat": {"enabled": True, "times": ["09:00", "17:00"]},
+            "debug_images": {"retention_hours": 12, "max_files": 500, "max_total_mb": 200},
             "debug": False
         }
 
@@ -127,6 +128,72 @@ def log_message(msg: str):
     with open("logs/monitor.log", "a", encoding="utf-8") as f:
         f.write(line + "\n")
     print(line)
+
+
+def prune_debug_images(retention_hours: int = 12, max_files: int = 500, max_total_mb: int = 200):
+    """debug_images の古い/多すぎるファイルを削除して容量を抑制する。
+    - retention_hours: 何時間前より古いものを優先的に削除
+    - max_files: 最大ファイル数
+    - max_total_mb: 合計MB上限
+    """
+    try:
+        folder = "debug_images"
+        if not os.path.isdir(folder):
+            return
+        entries = []
+        now = time.time()
+        for name in os.listdir(folder):
+            path = os.path.join(folder, name)
+            if not os.path.isfile(path):
+                continue
+            try:
+                st = os.stat(path)
+                entries.append({
+                    "path": path,
+                    "mtime": st.st_mtime,
+                    "size": st.st_size,
+                })
+            except Exception:
+                continue
+
+        if not entries:
+            return
+
+        # 1) 保持期間を超えた古いファイルを削除
+        cutoff = now - (retention_hours * 3600)
+        for e in sorted(entries, key=lambda x: x["mtime"])[:]:
+            if e["mtime"] < cutoff:
+                try:
+                    os.remove(e["path"])
+                except Exception:
+                    pass
+                entries.remove(e)
+
+        # 2) 総ファイル数が多い場合、古い順に削除
+        if len(entries) > max_files:
+            overflow = len(entries) - max_files
+            for e in sorted(entries, key=lambda x: x["mtime"])[:overflow]:
+                try:
+                    os.remove(e["path"])
+                except Exception:
+                    pass
+                entries.remove(e)
+
+        # 3) 合計サイズが上限を超える場合、古い順に削除
+        total_bytes = sum(e["size"] for e in entries)
+        limit_bytes = max_total_mb * 1024 * 1024
+        if total_bytes > limit_bytes:
+            for e in sorted(entries, key=lambda x: x["mtime"]):
+                try:
+                    os.remove(e["path"])
+                except Exception:
+                    pass
+                total_bytes -= e["size"]
+                if total_bytes <= limit_bytes:
+                    break
+    except Exception:
+        # ログは肥大させないためエラーは黙殺
+        pass
 
 def send_outlook_email(to_addr, subject, body):
     try:
@@ -544,6 +611,12 @@ def check_and_notify():
             # 現在の lead_minutes でメイン値
             bt_main, vt_main = api._latest_times(target_offset_minutes=lead_minutes)
             rain, vt_jst, png_url = api.rainfall_mm_at(lat, lon, bt_main, vt_main)
+            
+            # デバッグ画像のファイル名を生成
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+            xt, yt = api._deg2tile(lat, lon)
+            px, py = api._pixel_in_tile(lat, lon)
+            debug_filename = f"tile_{ts}_{vt_main}_max_2x2_z{api.zoom}_x{xt}_y{yt}_px{px}_py{py}.png"
 
             # プレビュー（固定時刻での比較）
             try:
@@ -594,9 +667,6 @@ def check_and_notify():
                 log_message(f"[WARNING] [{loc_name}] データ取得失敗。次回再試行します。")
                 continue
 
-            # デバッグ画像のファイル名を生成
-            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-            debug_filename = f"tile_{ts}_{validtime}_max_2x2_z{api.zoom}_x{xt}_y{yt}_px{px}_py{py}.png"
             log_message(f"[{loc_name}] デバッグ画像: {debug_filename}")
             log_message(f"[{loc_name}] 降水量 ({vt_jst.strftime('%H:%M')} JST): {rain:.1f} mm/h")
 
@@ -619,6 +689,14 @@ def check_and_notify():
                 log_message(f"[{loc_name}] {level}検知 → {email_to} に通知送信")
             else:
                 log_message(f"[{loc_name}] {level}検知（通知設定なし: enabled={notification_enabled}, email='{email_to}'）")
+
+            # デバッグ画像の自動クリーンアップ
+            dbg = cfg.get("debug_images", {}) if isinstance(cfg, dict) else {}
+            prune_debug_images(
+                retention_hours=int(dbg.get("retention_hours", 12)),
+                max_files=int(dbg.get("max_files", 500)),
+                max_total_mb=int(dbg.get("max_total_mb", 200)),
+            )
         
     except Exception as e:
         log_message(f"[ERROR] チェック処理エラー: {e}")
