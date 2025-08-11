@@ -117,6 +117,10 @@ def load_config():
         }
 
 def log_message(msg: str):
+    # [DEBUG]で始まるメッセージは除外
+    if msg.startswith("[DEBUG]"):
+        return
+    
     os.makedirs("logs", exist_ok=True)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{ts}] {msg}"
@@ -590,7 +594,10 @@ def check_and_notify():
                 log_message(f"[WARNING] [{loc_name}] データ取得失敗。次回再試行します。")
                 continue
 
-            log_message(f"[{loc_name}] タイルURL: {png_url}")
+            # デバッグ画像のファイル名を生成
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+            debug_filename = f"tile_{ts}_{validtime}_max_2x2_z{api.zoom}_x{xt}_y{yt}_px{px}_py{py}.png"
+            log_message(f"[{loc_name}] デバッグ画像: {debug_filename}")
             log_message(f"[{loc_name}] 降水量 ({vt_jst.strftime('%H:%M')} JST): {rain:.1f} mm/h")
 
             level = "豪雨" if rain >= torrential else "大雨" if rain >= heavy else None
@@ -604,7 +611,7 @@ def check_and_notify():
                     f"{loc_name} 周辺で {level} が予測されています。\n\n"
                     f"降水量 ({vt_jst.strftime('%H:%M')} JST): {rain:.1f} mm/h\n"
                     f"警報レベル: {level} (閾値: 大雨{heavy}mm/h, 豪雨{torrential}mm/h)\n"
-                    f"タイルURL: {png_url}\n"
+                    f"デバッグ画像: {debug_filename}\n"
                     f"確認時刻: {datetime.now():%Y/%m/%d %H:%M}\n\n"
                     "データソース: 気象庁 高解像度降水ナウキャスト"
                 )
