@@ -1,20 +1,44 @@
 {
-  "location": {
-    "name": "三島駅",
-    "lat": 35.126474871810345,
-    "lon": 138.91109391000256
-  },
   "monitoring": {
-    "enabled": false,
-    "interval_minutes": 3
+    "enabled": true,
+    "interval_minutes": 3,
+    "lead_minutes": 60
   },
-  "thresholds": {
-    "heavy_rain": 30,
-    "torrential_rain": 50
-  },
-  "notification": {
-    "email_to": "",
-    "enabled": true
-  },
-  "debug": true
+  "debug": true,
+  "locations": [
+    {
+      "name": "三島駅",
+      "lat": 35.126474871810345,
+      "lon": 138.91109391000256,
+      "heavy_rain": 30,
+      "torrential_rain": 50,
+      "email_to": "",
+      "notification_enabled": true
+    },
+    {
+      "name": "テスト",
+      "lat": 32.79724870239604,
+      "lon": 130.17028871399285,
+      "heavy_rain": 30,
+      "torrential_rain": 50,
+      "email_to": "",
+      "notification_enabled": false
+    },
+    {
+      "name": "名古屋駅",
+      "lat": 35.17069126534626,
+      "lon": 136.8815178285863,
+      "heavy_rain": 30,
+      "torrential_rain": 50,
+      "email_to": "",
+      "notification_enabled": false
+    }
+  ],
+  "heartbeat": {
+    "enabled": true,
+    "times": [
+      "09:00",
+      "17:00"
+    ]
+  }
 }
