@@ -36,6 +36,9 @@ try:
 except ImportError:
     WINDOWS_EMAIL = False
 
+# ログ抑制フラグ（設定から動的に更新）
+SUPPRESS_WARN = False
+
 # ───────────────────────────────────────────
 # ステップ値→mm/h 変換（ベース定義）
 # identity: 1..60 → そのままmm/h, 61..65は拡張値
@@ -120,6 +123,9 @@ def load_config():
 def log_message(msg: str):
     # [DEBUG]で始まるメッセージは除外
     if msg.startswith("[DEBUG]"):
+        return
+    # 設定により [WARN] を抑制
+    if msg.startswith("[WARN]") and SUPPRESS_WARN:
         return
     
     os.makedirs("logs", exist_ok=True)
@@ -561,6 +567,9 @@ def check_and_notify():
     try:
         cfg = load_config()
         debug_mode = cfg.get("debug", False)
+        # ログ抑制の反映
+        global SUPPRESS_WARN
+        SUPPRESS_WARN = bool(cfg.get("log", {}).get("suppress_warn", False))
         lead_minutes = int(cfg.get("monitoring", {}).get("lead_minutes", 0))
 
         maybe_send_heartbeat(cfg)
@@ -667,7 +676,7 @@ def check_and_notify():
                 log_message(f"[WARNING] [{loc_name}] データ取得失敗。次回再試行します。")
                 continue
 
-            log_message(f"[{loc_name}] デバッグ画像: {debug_filename}")
+            log_message(f"[{loc_name}] デバッグ画像: debug_images/{debug_filename}")
             log_message(f"[{loc_name}] 降水量 ({vt_jst.strftime('%H:%M')} JST): {rain:.1f} mm/h")
 
             level = "豪雨" if rain >= torrential else "大雨" if rain >= heavy else None

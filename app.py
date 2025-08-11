@@ -425,6 +425,39 @@ with tab3:
         col3.metric("エラー", sum("エラー" in ln for ln in lines))
 
         st.divider()
+        # ログに出力されたデバッグ画像をプレビュー表示
+        st.subheader("🖼️ デバッグ画像（直近）")
+        debug_paths = []
+        try:
+            for ln in reversed(lines):
+                m = re.search(r"デバッグ画像:\s+(debug_images/\S+\.png)", ln)
+                if not m:
+                    continue
+                path = m.group(1)
+                if os.path.exists(path) and path not in debug_paths:
+                    debug_paths.append(path)
+                if len(debug_paths) >= 12:
+                    break
+        except Exception:
+            debug_paths = []
+
+        if debug_paths:
+            for p in debug_paths:
+                with st.container(border=True):
+                    st.caption(p)
+                    try:
+                        st.image(p, use_container_width=True)
+                    except Exception:
+                        st.write("画像を表示できませんでした")
+                    try:
+                        with open(p, "rb") as fp:
+                            st.download_button("画像をダウンロード", fp, file_name=os.path.basename(p), mime="image/png", key=f"dl_{p}")
+                    except Exception:
+                        pass
+        else:
+            st.info("デバッグ画像はまだありません。")
+
+        st.divider()
         st.text_area("全文", log_txt, height=400)
         if st.button("🗑️ ログをクリア"):
             open("logs/monitor.log", "w").close()
