@@ -1,5 +1,5 @@
 import streamlit as st, json, subprocess, os, re, sys, signal
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 st.set_page_config(page_title="気象庁ナウキャスト PNGタイル解析（APIキー不要）", page_icon="🌧️")
 
@@ -32,7 +32,7 @@ def save_config(cfg):
         json.dump(cfg, f, ensure_ascii=False, indent=2)
 
 
-# ───────────────── UI ───────────────────────
+# ───────────── UI ───────────────────────
 st.title("気象庁ナウキャスト PNGタイル解析（APIキー不要）")
 st.caption("気象庁ナウキャスト PNGタイル解析（APIキー不要）")
 
@@ -183,6 +183,7 @@ with tab1:
     if last_updated_raw:
         try:
             ludt = datetime.strptime(last_updated_raw, "%Y-%m-%d %H:%M:%S")
+            ludt = ludt.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
             short_val = ludt.strftime("%m/%d %H:%M")        # 例: 08/11 14:35
             full_tip  = f"{ludt:%Y-%m-%d %H:%M:%S}"         # 例: 2025-08-11 14:35:42
             c3.metric("最終更新", short_val, help=full_tip)
